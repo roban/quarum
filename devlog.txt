@@ -1,0 +1,20 @@
+Developer log for quarum
+========================
+
+2012-04-23
+----------
+
+Today I want to create a working example of a fit to one spectrum. 
+
+I've copied over powergauss.py from my line_profiles project and am
+cleaning it up and doing some refactoring. 
+
+
+To Do
+-----
+
+
+
+Use astropy.constants for constants (wavelengths, cc.c_light_cm_s)?
+
+Refactor to specify number of components on a line-by-line basis. 
