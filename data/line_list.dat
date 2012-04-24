@@ -1,0 +1,31 @@
+# lines mentioned in Linhua, Fan & Vestergaard (2008ApJ...679..962J),
+#  wavelengths from atomdb
+1486.5 N IV]
+1749.67 N III] 
+# from Vandenberk et al. (2001) SDSS composite paper
+1262.59 Si II 
+1175.70 C III*
+1065.10 Ar I
+1117.26 Fe III
+# from http://www.sdss.org/dr6/algorithms/speclinefits.html
+1033.30  O VI
+#1215.67  Ly alpha
+#1239.42  N V
+1305.53  O I
+1335.52  C II
+1399.8   Si IV + O IV  
+#1545.86  C IV
+1640.4   He II
+1665.85  O III
+1857.4  Al III
+1908.27  C III
+# Ad hoc Fe features estimated from Figure 3 of 
+# Vestergaard & Wilkes (2001 ApJS 134 1)
+# http://adsabs.harvard.edu/abs/2001ApJS..134....1V
+# combined with looking at residuals of a fit from the Zheng composite.
+1360. Fe?
+1430. Fe?
+1600. Fe?
+1650. Fe?
+1700. Fe?
+1800. Fe?
