@@ -4,17 +4,36 @@ Developer log for quarum
 2012-04-23
 ----------
 
-Today I want to create a working example of a fit to one spectrum. 
+Starting to create a working example of a fit to one spectrum. 
 
 I've copied over powergauss.py from my line_profiles project and am
 cleaning it up and doing some refactoring. 
+
+2012-04-24
+----------
+
+$ python spec_fit.py --single_NV -k=0.870763 -z=2.235563 -c=1 -n=1e4 -p=1 -s=data/SDSS_spectra/spSpec-51993-0542-631.fit -o output/spSpec-51993-0542-631 -b=1e3
+
+$ python spec_fit.py --single_NV -k=0.870763 -z=2.235563 -c=2 -n=1e4 -p=1 -s=data/SDSS_spectra/spSpec-51993-0542-631.fit -o output/spSpec-51993-0542-631_c2 -b=1e3
+
+>>> from quarum import powergauss
+>>> m = powergauss.PowerGaussMCMC.load('output/spSpec-51993-0542-631.mcmc')
+>>> m.plot_spectra(thin=m.len()/10)
+
+>>> m2 = powergauss.PowerGaussMCMC.load('output/spSpec-51993-0542-631_c2.mcmc')
+>>> m2.plot_spectra(thin=m2.len()/10)
+
+>>> import margplot
+>>> margplot.marginal_plot([m.db.width_0[::100], m.db.vshift_0[::100]])
+>>> margplot.marginal_plot([m2.db.width_0[::100], m2.db.vshift_0[::100]])
 
 
 To Do
 -----
 
-
-
 Use astropy.constants for constants (wavelengths, cc.c_light_cm_s)?
 
 Refactor to specify number of components on a line-by-line basis. 
+
+Convert absorption line to multiplicative transmission rather than
+additive negative flux.

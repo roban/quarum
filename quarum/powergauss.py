@@ -111,7 +111,7 @@ class PowerGauss(object):
                 startvalues_defaults['peak_%i'%k] = (
                     self.closest_flux(self.centers[k]) 
                     - numpy.median(self.scaled_flux))
-                if startvalues_defaults['peak_%i'%k] < 0.1 * median_scaled_flux):
+                if startvalues_defaults['peak_%i'%k] < 0.1 * median_scaled_flux:
                     startvalues_defaults['peak_%i'%k] = 0.1 * median_scaled_flux
                 startvalues_defaults['vshift_%i'%k] = -1000. - (300. * j)
 
@@ -131,9 +131,9 @@ class PowerGauss(object):
             startvalues_defaults['ewidth_%i'%i] = 1000.0
             startvalues_defaults['epeak_%i'%i] = (
                 self.closest_flux(self.extra_line_centers[i]) 
-                - median_scaled_flux))
-            if startvalues_defaults['epeak_%i'%i] < 0.1 * median_scaled_flux):
-                startvalues_defaults['epeak_%i'%i] = 0.1 * median_scaled_flux)
+                - median_scaled_flux)
+            if startvalues_defaults['epeak_%i'%i] < 0.1 * median_scaled_flux:
+                startvalues_defaults['epeak_%i'%i] = 0.1 * median_scaled_flux
             startvalues_defaults['evshift_%i'%i] = -1000.0
 
         # Set up default ranges for extra lines.
@@ -159,7 +159,7 @@ class PowerGauss(object):
                 ranges_defaults['awidth_%i_%i'%(j,i)] = [1., 100.]
                 startvalues_defaults['apeak_%i_%i'%(j,i)] = (
                     self.closest_flux(self.absorber_centers[j][i]) 
-                    - median_scaled_flux))
+                    - median_scaled_flux)
                 if startvalues_defaults['apeak_%i_%i'%(j,i)] > -0.1:
                     startvalues_defaults['apeak_%i_%i'%(j,i)] = -1.0
                 ranges_defaults['apeak_%i_%i'%(j,i)] = [-20.0, 0.0]
@@ -233,6 +233,7 @@ class PowerGauss(object):
                     self.__dict__[basename+'s'].append(param)
 
             # Now set up a Potential inforcing strict ordering of widths.
+            # This is to reduce the degeneracy of the model.
             starti = (i * self.n_components)
             endi = starti + self.n_components
             x = self.widths[starti:endi]
@@ -327,11 +328,10 @@ class PowerGauss(object):
         # Set up the true flux stochastic (flux without noise), with
         # or without a damping wing factor.
             
-        # For speed, I've split the addition into a binary tree,
-        # which dramatically reduces the number of addition
-        # operations to do when only a single component is
-        # updated. Note that all the complicated setup stuff
-        # happens at initialization. After that, pymc will just
+        # For speed, I've split the addition into a binary tree, which
+        # dramatically reduces the number of addition operations to do
+        # when only a single component is updated. All the complicated
+        # setup happens at initialization. After that, pymc will
         # figure out which parts of the tree to update when each
         # parameter changes.
 
@@ -384,7 +384,8 @@ class PowerGauss(object):
                 doc = trans_dampingwing.__doc__
                 )
             # Total spectrum without noise and before convolution.
-            self.trueflux0 = self._trueflux_levels[-1][0] * self.trans_dampingwing
+            self.trueflux0 = (self._trueflux_levels[-1][0] 
+                              * self.trans_dampingwing)
         else:
             # No damping wing:
             self.trueflux0 = self._trueflux_levels[-1][0]
@@ -422,7 +423,6 @@ class PowerGauss(object):
                 self.log_widths[-1]
 
             self.__dict__[vshift.__name__] = vshift
-
         
         # Set up multivariate normal priors on the joint distributions
         # of some parameters:
@@ -457,15 +457,7 @@ class PowerGauss(object):
                         )
                     )
 
-        # # The chi-squared value for current model (not used in fit
-        # # directly, just for later model checking).
-        # @pymc.deterministic(trace=True)
-        # def chisqr(trueflux=self.trueflux[self.goodmask], 
-        #            observed_flux=self.scaled_flux[self.goodmask],
-        #            error=self.scaled_error[self.goodmask]):
-        #     return numpy.sum(((observed_flux - trueflux)/error)**2.)
-        # self.chisqr = chisqr
-
+        ### The Likelihood: ###
         # Stochastic representing spectrum with noise. This defines
         # the data likelihood given the model.
         self.flux = pymc.Normal(name='flux', 
@@ -476,7 +468,7 @@ class PowerGauss(object):
                                 trace=not(observed))
 
     def closest_flux(self, wavelength_point):
-        """The (scaled) flux in the pixels closest to the given wavelength."""
+        """The (scaled) flux in the pixel closest to wavelength_point."""
         closest_index = numpy.argmin(numpy.abs(
                 self.wavelength - wavelength_point))
         cf = self.scaled_flux[closest_index]
@@ -497,8 +489,9 @@ class PowerGauss(object):
         shift_factor = 1. + (vshift * 1e5 / cc.c_light_cm_s)
         shifted_center = center * shift_factor
         wavelength_width = center * width * 1e5 / cc.c_light_cm_s
+        # Go out only to 4-sigma to speed up calculation on large spectra.
         dev = numpy.square((wavelength - shifted_center) / wavelength_width)
-        mask = dev < 16 # Go out only to 4-sigma to speed up calculation on large spectra.
+        mask = dev < 16 
         y = numpy.zeros_like(dev)
         y[mask] = numpy.exp(-0.5 * dev[mask])
         return peak * y
@@ -534,7 +527,7 @@ class PowerGauss(object):
                        convolve_width_pix=None,
                        ):
         """Continuum, emission lines, damping wing transmission,
-        unabsorbed total flux, and absorbed total flux
+        unabsorbed total flux, and absorbed total flux.
         """
         tf = []
         tf.append(contflux * (model_wavelength/pivot_wavelength)**contindex)
@@ -554,11 +547,11 @@ class PowerGauss(object):
                                         tau0=dw_tau0, 
                                         xe=dw_lambda_e, 
                                         alpha=dw_alpha))
-            #total *= tf[-1]
         else:
             tf.append(numpy.ones_like(model_wavelength))
         tf.append(total)
-        tf.append(total * tf[-2])
+        # Multiply total flux by transmission.
+        tf.append(total * tf[-2]) 
         if convolve_width_pix is not None:
             tf[-1] = scipy.signal.convolve(tf[-1], numpy.atleast_2d(kernel), 
                                            mode='valid')
@@ -569,25 +562,31 @@ class PowerGauss(object):
 class PowerGaussMCMC(pymc.MCMC):
     """An MCMC Chain for a PowerGauss model.
 
+    This is a convenient way to set up a pymc.MCMC chain for a
+    PowerGauss model.
+
     Attributes
     ----------
 
     model : PowerGauss object
         
     """
-    def __init__(self, filename=None, dbname=None, dbdirectory='dbs', 
+    def __init__(self, wavelength, error, observed_flux,
+                 filename=None, dbname=None, dbdirectory='dbs', 
                  nodb=False, dbclass=None, dbmode='w',
                  epsfactor=0.05, nosave=False, **kwargs):
         """
 
         Parameters
         ----------
+        wavelength, error, observed_flux -- passed to `PowerGauss.__init__`
         filename -- name of a file to store properties
         dbname -- name of a file for the MCMC chain database
         dbdirectory -- directory to store the MCMC chain
         dbclass -- class for the object to store the MCMC chain database
         dbmode -- passed to pymc.MCMC.__init__
         epsfactor -- scales initial proposal distribution width
+        kwargs -- additional keyword arguments passed to `PowerGauss.__init__`
         """
         if not hasattr(self, '_tosave'):
             # Record state (currently that should just be the passed
@@ -597,6 +596,12 @@ class PowerGaussMCMC(pymc.MCMC):
             del self._tosave['kwargs']
             del self._tosave['nosave']
             self._tosave.update(**kwargs)
+
+        # Add wavelength, error, observed_flux to arguments to be
+        # passed to PowerGauss.__init.
+        kwargs.update(dict(wavelength=wavelength, 
+                           error=error, 
+                           observed_flux=observed_flux))
 
         # Set up the probability model.
         self.model = PowerGauss(**kwargs)
@@ -694,6 +699,11 @@ class PowerGaussMCMC(pymc.MCMC):
         if filename is not None:
             if not nosave:
                 self.save(filename)
+
+    def len(self, chain=-1):
+        """The length of the current chain.
+        """
+        return len(self.db.trace(self.db.trace_names[-1][0], chain=-1)[:])
 
     def min_deviance_params(self, trim=0):
         """Return a dictionary of parameter values at the minimum deviance.
@@ -998,9 +1008,7 @@ class PowerGaussMCMC(pymc.MCMC):
         return cls(nosave=True, **state)
 
     def get_dbfilename(self):
-        return self.mcmodel.db.dbname
-
-
+        return self.db.dbname
 
 class Log10Deterministic(pymc.Deterministic):
     """A Deterministic whose value is the base-10 logarithm of the
@@ -1201,7 +1209,6 @@ def plot_fits(filelist,
                                  ]
         m.mcmodel.db.close()
         del m
-    #value_pairs = []
     value_dict = defaultdict(list)
     unique_varnames = set()
     for vnames in varname_pairs:
@@ -1230,9 +1237,7 @@ def plot_fits(filelist,
             vaxes.set_title(label)
             axes.figure.set_label(label + '_spectrum')
             vaxes.figure.set_label(label + '_vspectrum')
-            #xmin = max(min(m.mcmodel.wavelength), 1150)
             xmin = 1150
-            #xmax = min(max(m.mcmodel.wavelength), 1275)
             xmax = 1275
             axes.set_xlim(xmin,xmax)
             vmin = max((xmin/1215.67 - 1) * cc.c_light_cm_s / 1e5, -1.2e4)
@@ -1246,14 +1251,6 @@ def plot_fits(filelist,
 
             if output_callback is not None:
                 output_callback()
-        # vpairs = []
-        # for vnames in varname_pairs:
-        #     vpairs.append((m.mcmodel.db.trace(vnames[0])[trim::thin],
-        #                    m.mcmodel.db.trace(vnames[1])[trim::thin]))
-        #     value_dict[vnames[0]].append(vpairs[-1][0])
-        #     value_dict[vnames[1]].append(vpairs[-1][1])
-        #     print "mean ", vnames[0], numpy.mean(vpairs[-1][0])
-        #     print "mean ", vnames[1], numpy.mean(vpairs[-1][1])
 
         for vname in list(unique_varnames):
             if type(vname) is tuple:
@@ -1270,7 +1267,6 @@ def plot_fits(filelist,
                 value_dict[vname].append(m.mcmodel.db.trace(vname)[trim::thin])
             print "mean", vname, numpy.mean(value_dict[vname][-1])
         final_filelist.append(filename)
-        #value_pairs.append(vpairs)
         m.mcmodel.db.close()
         del m
     if savename is not None:
@@ -1279,7 +1275,6 @@ def plot_fits(filelist,
                              dict((str(k), v) 
                                   for k, v in value_dict.iteritems()))
 
-    #value_pairs = numpy.array(value_pairs)
     colors = itertools.cycle(['r', 'g', 'b', 'c', 'm', 'y', 'k'])
     alpha = 0.05
     bins = 10
@@ -1294,20 +1289,6 @@ def plot_fits(filelist,
                 axeslist=results['axeslist'], color=colors.next(), 
                 scatterstyle=dict(alpha=alpha),
                 histbinslist=histbinslist)
-
-    # for (ipair, vnames) in enumerate(varname_pairs):
-    #     results = dict(axeslist=None)
-    #     for ifile in xrange(len(final_filelist)):
-    #         results = plot2Ddist.plot2Ddist(
-    #             [value_dict[vnames[0]][ifile], 
-    #              value_dict[vnames[1]][ifile] / value_dict[vnames[0]][ifile]
-    #              ], 
-    #             labels=(vnames[0],
-    #                     "%s over %s" % (vnames[1], vnames[0]),
-    #                     ),
-    #             axeslist=results['axeslist'], color=colors.next(), 
-    #             scatterstyle=dict(alpha=alpha),
-    #             histbinslist=histbinslist)
 
     if output_callback is not None:
         output_callback()
