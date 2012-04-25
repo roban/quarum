@@ -27,6 +27,8 @@ Now load and plot the fit results:
 
 .. image:: http://github.com/roban/quarum/raw/master/plots/spSpec-51993-0542-631.png
 
+Load and plot the 2-component fit results:
+
  >>> m2 = powergauss.PowerGaussMCMC.load('output/spSpec-51993-0542-631_c2.mcmc')
  >>> m2.plot_spectra(thin=m2.len()/10)
 
@@ -42,6 +44,7 @@ Plot the joint distributions of widths and shifts for the Ly-alpha line:
  >>> al[0].set_ylabel('V_Shift (km/s)')
 
 .. image:: http://github.com/roban/quarum/raw/master/plots/Lya_width_shift.png
+
 
 If you aren't running from ``ipython --pylab``, show the fits:
 
