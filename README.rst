@@ -4,7 +4,7 @@ quarum
 Bayesian quasar spectrum modeling
 ---------------------------------
 
-Highly experimental.
+This project is in the early development stage.
 
 Usage
 -----
